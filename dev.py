@@ -67,7 +67,7 @@ for h in oddsdata:
                 )
                 odds.append(odd)
 
-    # collecting oddsdata from historyodds
+    # collecting history data
     for _id in ids.values():
         if _id != -1:
             for bookies_id in history[_id]:
