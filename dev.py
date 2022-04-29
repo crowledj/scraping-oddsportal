@@ -1,8 +1,14 @@
 # import oddsportal object
 from Handicap import Handicap
+from Bookmaker import Bookmaker
 from Odd import Odd
 
 import json
+import os
+
+from pprint import pprint
+
+os.system("clear")
 
 # define functions
 def collect_value(data: list, index: int) -> dict:
@@ -80,6 +86,8 @@ for h in oddsdata:
                     )
                     odds.append(odd)
 
-    break
+    # create Bookmakers object
+    results = odds.summary()
+    pprint(results)
 
-# manipulate odds
+    break

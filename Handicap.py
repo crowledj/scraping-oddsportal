@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 class Handicap:
 
     def __init__(self, name="", code="", value=-1.0):
@@ -23,6 +25,7 @@ class Handicap:
             self.items.append(odd)
 
     def __str__(self):
+        '''Represent object as a string on print'''
         list = [
             self.name,
             self.value,
@@ -30,19 +33,35 @@ class Handicap:
         ]
         return ",".join([str(i) for i in list])
 
-    # def to_dict(self):
-    #     items = []
-    #     for item in self.items:
-    #         items.append(item.to_dict())
-    #     items = sorted(items, key=lambda x: x['change_time'])
-    #     items = sorted(items, key=lambda x: x['bookmaker'])
+    def to_dict(self):
+        
+        # turn odd object into a list
+        items = []
+        for item in self.items:
+            items.append(item.to_dict())
+        items = sorted(items, key=lambda x: x['change_time'])
+        items = sorted(items, key=lambda x: x['bookmaker'])
+        items = sorted(items, key=lambda x: x['id'])
 
-    #     bookmakers = {}
-    #     for item in items:
-    #         o = item['odd']
-    #         b = item['bookmaker']
-    #         try:
-    #             bookmakers[b].append(o)
-    #         except:
-    #             bookmakers.update({b: [o]})
-    #     return bookmakers
+        # turn odd list into dictionary
+        odd_dict = {}
+        for i in items:
+            d, b = i['id'], i['bookmaker']
+            if i['id'] not in odd_dict:
+                odd_dict.setdefault(d,{})
+            if i['bookmaker'] not in odd_dict[d]:
+                odd_dict[d].setdefault(b,[])
+            odd_dict[d][b].append(i['odd'])
+        return odd_dict
+
+    def summary(self):
+        odds = self.to_dict()
+        for d,data in odds.items():
+            for b,odd in data.items():
+                odds[d][b] = {
+                    'opening': odd[0],
+                    'closing': odd[-1],
+                    'highest': max(odd),
+                    'average': round(sum(odd)/len(odd),2)
+                }
+        return odds

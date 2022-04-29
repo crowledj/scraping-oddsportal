@@ -3,17 +3,17 @@ from datetime import datetime
 
 class Odd:
 
-    def __init__(self, bookmaker="", id=-1, odd=-1, timestamp=-1):
+    def __init__(self, bookmaker="", id=-1, odd=-1.0, timestamp=-1):
         '''
         Odd object
         :param bookmaker: str
         :param id: int
-        :param odd: int
+        :param odd: float
         :param timestamp: int
         '''
         self.id = id
         self.bookmaker = bookmaker
-        self.odd = odd
+        self.odd = float(odd)
         self.timestamp = timestamp
         self.change_time = self.strftime(timestamp)
         self.hashing()
@@ -45,7 +45,7 @@ class Odd:
             id=self.id,
             bookmaker=self.bookmaker,
             odd=self.odd,
-            change_time=self.change_time,
+            change_time=self.change_time
         )
 
     def __str__(self):
