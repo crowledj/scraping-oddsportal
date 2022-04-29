@@ -1,60 +1,60 @@
-import base64
+from hashlib import md5
 from datetime import datetime
 
 class Odd:
 
-    def __init__(self, bookmaker="", odd=-1, timestamp=-1):
+    def __init__(self, bookmaker="", id=-1, odd=-1, timestamp=-1):
+        '''
+        Odd object
+        :param bookmaker: str
+        :param id: int
+        :param odd: int
+        :param timestamp: int
+        '''
+        self.id = id
         self.bookmaker = bookmaker
-        self.odd = float(odd)
+        self.odd = odd
         self.timestamp = timestamp
+        self.change_time = self.strftime(timestamp)
         self.hashing()
 
+    def hashing(self):
+        '''
+        Turn object string into a hash
+        '''
+        self.hash = md5(bytes(self.__str__(), encoding='utf-8')).hexdigest()
+
     def strftime(self, timestamp):
+        '''
+        Format timestamp as a string date
+        :param timestamp: int
+        :return:
+        '''
         try:
             timestamp = datetime.fromtimestamp(timestamp)
             timestamp = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             return timestamp
-        except Exception as exception:
-            print(exception)
-
-    def hashing(self):
-        text = ",".join([str(i) for i in [self.bookmaker,self.odd,self.timestamp]])
-        self.hash = base64.b64encode(bytes(text, encoding='utf-8')).decode()
+        except:
+            return None
 
     def to_dict(self):
+        '''
+        Return object as a dictionary
+        '''
         return dict(
+            id=self.id,
             bookmaker=self.bookmaker,
             odd=self.odd,
-            change_time=self.strftime(self.timestamp)
+            change_time=self.change_time,
         )
 
-class Odds:
-
-    def __init__(self, handicap_code, handicap_value, name):
-        self.items = []
-        self.hashes = []
-        self.handicap_code = handicap_code
-        self.handicap_value = handicap_value
-        self.name = name
-
-    def append(self, item):
-        if item.hash not in self.hashes:
-            self.items.append(item)
-            self.hashes.append(item.hash)
-
-    def to_dict(self):
-        items = []
-        for item in self.items:
-            items.append(item.to_dict())
-        items = sorted(items, key=lambda x: x['change_time'])
-        items = sorted(items, key=lambda x: x['bookmaker'])
-
-        bookmakers = {}
-        for item in items:
-            o = item['odd']
-            b = item['bookmaker']
-            try:
-                bookmakers[b].append(o)
-            except:
-                bookmakers.update({b: [o]})
-        return bookmakers
+    def __str__(self):
+        '''
+        Return object as a string
+        '''
+        list = [
+            self.bookmaker,
+            self.odd,
+            self.timestamp
+        ]
+        return ",".join([str(i) for i in list])
