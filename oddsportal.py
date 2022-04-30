@@ -1,160 +1,151 @@
-from Handicap import Handicap
-from Odd import Odd
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import unquote
+import time
 import json
+import re
 
-def collect_odds(data: dict, bookmakers: dict, labels: list, bet_keyword: str) -> dict:
-    
-    # define functions
-    def collect_value(data: list, index: int) -> dict:
-        result = {int(k):-1 for k in range(3)}
-        for i,idx in enumerate(index):
-            result[i] = data[idx]
-        return result
+# define the functions
+def get(url, method="default"):
+    '''
+    GET request functions
+    :param url: str
+    :param method: str, {"default","oddsportal"}
+    :return soup/response_text: bs4 object or str
+    '''
+    if method == "default":
+        h = {'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.99 Safari/537.36'}
+        r = requests.get(url, headers=h)
+        if r.status_code == 200:
+            return BeautifulSoup(r.text, "html.parser")
+    elif method == "oddsportal":
+        h = {
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "en-US,en;q=0.9,pl;q=0.8",
+            "referer": "https://www.oddsportal.com/",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.99 Safari/537.36"
+        }
+        r = requests.get(url, headers=h)
+        if r.status_code == 200:
+            return r.text
+    return None
 
-    def relabel(data: dict, labels: list) -> dict:
-        new = {}
-        for i in data:
-            if i not in new:
-                new.update({labels[i]: data[i]})
-        return new
+def find_bookmakers(soup):
+    '''
+    Execute oddsportal bookmakers JavaScript file
+    :param response_text: str, oddsportal landing page for a match
+    :return bookies: dict
+    '''
+    ref = "https://www.oddsportal.com"
+    for script in soup.find_all("script",{"type":"text/javascript"}):
+        try:
+            link = script['src']
+            if ref not in link:
+                link = ref + link
+            if "/bookies" in link:
+                d = re.findall("\d+",link)[-1]
+                bookies_js = link.replace(d,"{}").format(int(time.time()))
+                bookies = json.loads(
+                    re.findall(r'bookmakersData=({.*});var',
+                    get(url=bookies_js, method="oddsportal"))[0]
+                )
+                return bookies
+        except: pass
 
+def find_page_event(text: str) -> dict:
+    '''
+    Find PageEvent inside html using Regular Expression
+    :param text: str
+    :return data: dict
+    '''
+    variable = re.search("(?<=PageEvent\()(.*?)(?=\)\;)",text)
+    if variable != None:
+        return json.loads(variable.group())
 
-    # define the output variable
-    output = {}
+class OddsURL:
 
-    # prepare the odds and the history data
-    oddsdata = data['d']['oddsdata']['back']
-    history = data['d']['history']['back']
+    def __init__(self, params: list, live: bool) -> str:
+        self.url = "https://fb.oddsportal.com/feed/"
+        if live:
+            self.url += "live/"
+        else:
+            self.url += "match/"
+        self.url += "-".join([str(i) for i in params])
+        self.url += ".dat?_="
 
-    # iterate the handicaps
-    for h in oddsdata:
-        handicap = Handicap(
-            code=h,
-            value=oddsdata[h]['handicapValue'],
-            name=oddsdata[h]['mixedParameterName']
-        )
+    def __str__(self):
+        return self.time()
 
-        # identify outcomeId variable type
-        outcomeId = oddsdata[h]['outcomeId']
-        if type(outcomeId) == list:
-            idx = [i for i in range(len(outcomeId))]
-        elif type(outcomeId) == dict:
-            idx = [str(i) for i in range(len(outcomeId))]
-        ids = collect_value(data=outcomeId, index=idx) # outcome ids
+    def time(self):
+        timestamp = int(time.time())
+        self.url += str(timestamp)
+        return self.url
 
-        # define the labels
-        names = {ids[i]:l for i,l in zip(ids,labels)} 
+class OddsPortal:
 
-        # collecting opening odds
-        act = oddsdata[h]['act']
-        openingOdd = oddsdata[h]['openingOdd']
-        openingChangeTime = oddsdata[h]['openingChangeTime']
-        for bookies_id in openingOdd:
-            if act[bookies_id]:
-                ods = collect_value(data=openingOdd[bookies_id], index=idx) # odds value
-                tms = collect_value(data=openingChangeTime[bookies_id], index=idx) # timestamps
-                for i,_id in enumerate(ids.values()):
-                    if _id != -1:
-                        odd = Odd(
-                            id=_id,
-                            odd=ods[i],
-                            timestamp=tms[i],
-                            bookmaker=bookmakers[bookies_id]['WebName']
+    def __init__(self, tabs: list):
+        self.tabs = tabs
+
+    def get(self, url):
+
+        # make a requests
+        self.html = get(url)
+        for script in self.html.find_all("script",{"type":"text/javascript"}):
+            if "PageEvent" in script.text:
+                try:
+
+                    # construct the url
+                    urls = []
+                    data = find_page_event(script.text)
+                    for tab in self.tabs:
+                        url = OddsURL(
+                            live=data['isLive'],
+                            params=[
+                                data['versionId'],
+                                data['sportId'],
+                                data['id'],
+                                tab['bettingType'],
+                                tab['scopeId'],
+                                unquote(data['xhash'])
+                            ]
                         )
-                        handicap.append(odd)
+                        urls.append(url)
+                    return urls
 
-        # collecting handicap odds
-        handicapOdds = oddsdata[h]['odds']
-        handicapChangeTime = oddsdata[h]['changeTime']
-        for bookies_id in handicapOdds:
-            if act[bookies_id]:
-                ods = collect_value(data=handicapOdds[bookies_id], index=idx)
-                tms = collect_value(data=handicapChangeTime[bookies_id], index=idx)
-                for i,_id in enumerate(ids.values()):
-                    if _id != -1:
-                        odd = Odd(
-                            id=_id,
-                            odd=ods[i],
-                            timestamp=tms[i],
-                            bookmaker=bookmakers[bookies_id]['WebName']
-                        )
-                        handicap.append(odd)
+                except:
+                    pass    
 
-        # collecting history odds
-        for _id in ids.values():
-            if _id != -1:
-                for bookies_id in history[_id]:
-                    if act[bookies_id]:
-                        for value in history[_id][bookies_id]:
-                            odd = Odd(
-                                id=_id,
-                                odd=value[0],
-                                timestamp=value[-1],
-                                bookmaker=bookmakers[bookies_id]['WebName']
-                            )
-                            handicap.append(odd)
-
-        # calculate the final summary and relabel the outcomeId
-        results = handicap.summary()
-        results = relabel(results,labels=names)
-
-        # filter the results
-        # for k in results:
-        #     results[k] = {p:results[k][p] for p in results[k] if p == bet_keyword}
-
-        output.update({handicap.code: results})
-
-    return output
+        return None
 
 
 if __name__ == "__main__":
 
-    from pprint import pprint
-    import os
-
-    os.system("cls")
-
     tabs = [
-        {"file_path": "data/1X2 (Full Time).json", "labels": ['1','X','2']},
-        {"file_path": "data/1X2 (1st Half).json", "labels": ['1','X','2']},
-        {"file_path": "data/1X2 (2nd Half).json", "labels": ['1','X','2']},
-        {"file_path": "data/Asian Handicap (Full Time).json", "labels": ['1','2']},
-        {"file_path": "data/Asian Handicap (1st Half).json", "labels": ['1','2']},
-        {"file_path": "data/Asian Handicap (2nd Half).json", "labels": ['1','2']},
-        {"file_path": "data/Both Teams To Score (Full Time).json", "labels": ['Yes','No']},
-        {"file_path": "data/Both Teams To Score (1st Half).json", "labels": ['Yes','No']},
-        {"file_path": "data/Both Teams To Score (2nd Half).json", "labels": ['Yes','No']},
-        {"file_path": "data/Correct Score (Full Time).json", "labels": ['Odds']},
-        {"file_path": "data/Correct Score (1st Half).json", "labels": ['Odds']},
-        {"file_path": "data/Correct Score (2nd Half).json", "labels": ['Odds']},
-        {"file_path": "data/Double Chance (Full Time).json", "labels": ['1X','12','X2']},
-        {"file_path": "data/Double Chance (1st Half).json", "labels": ['1X','12','X2']},
-        {"file_path": "data/Half Time - Full Time.json", "labels": ['Odds']},
-        {"file_path": "data/Over-Under (Full Time).json", "labels": ['Over','Under']},
-        {"file_path": "data/Over-Under (1st Half).json", "labels": ['Over','Under']},
-        {"file_path": "data/Over-Under (2nd Half).json", "labels": ['Over','Under']}
+        {"name": "1X2 (Full Time)", "bettingType": 1,"scopeId": 2},
+        {"name": "1X2 (1st Half)", "bettingType": 1,"scopeId": 3},
+        {"name": "1X2 (2nd Half)", "bettingType": 1,"scopeId": 4},
+        {"name": "Asian Handicap (Full Time)", "bettingType": 5, "scopeId": 2},
+        {"name": "Asian Handicap (1st Half)", "bettingType": 5, "scopeId": 3},
+        {"name": "Asian Handicap (2nd Half)", "bettingType": 5, "scopeId": 4},
+        {"name": "Both Teams To Score (Full Time)", "bettingType": 13, "scopeId": 2},
+        {"name": "Both Teams To Score (1st Half)", "bettingType": 13, "scopeId": 3},
+        {"name": "Both Teams To Score (2nd Half)", "bettingType": 13, "scopeId": 4},
+        {"name": "Over/Under (Full Time)", "bettingType": 2, "scopeId": 2},
+        {"name": "Over/Under (1st Half)", "bettingType": 2, "scopeId": 3},
+        {"name": "Over/Under (2nd Half)", "bettingType": 2, "scopeId": 4},
+        {"name": "Double Chance (Full Time)", "bettingType": 4, "scopeId": 2},
+        {"name": "Double Chance (1st Half)", "bettingType": 4, "scopeId": 3},
+        {"name": "Half Time / Full Time", "bettingType": 9, "scopeId": 2},
+        {"name": "Correct Score (Full Time)", "bettingType": 8, "scopeId": 2},
+        {"name": "Correct Score (1st Half)", "bettingType": 8, "scopeId": 3},
+        {"name": "Correct Score (2nd Half)", "bettingType": 8, "scopeId": 4}
     ]
 
-    for tab in tabs:
+    oddsportal = OddsPortal(tabs)
 
-        # read json files
-        data = json.load(open(tab['file_path'],encoding='utf-8'))
-        bookmakers = json.load(open('data/bookmakers.json',encoding='utf-8'))
-
-        # collecting the odds
-        bet = "bet365"
-        result = collect_odds(
-            data=data,
-            bookmakers=bookmakers,
-            labels=tab['labels'],
-            bet_keyword=bet
-        )
-
-        # dump the results
-        # file_name = tab['file_path'].replace('data/','output/')
-        # json.dump(result,open(file_name,'w',encoding='utf-8'),indent=4)
-
-        # printout the result
-        print(tab['file_path'])
-        pprint(result)
-        print()
+    url = "https://www.oddsportal.com/soccer/england/premier-league-2020-2021/arsenal-brighton-2qsbaz5A"
+    oddurls = oddsportal.get(url)
+    bookmakers = find_bookmakers(oddsportal.html)
+    for url in oddurls:
+        print(url)
