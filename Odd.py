@@ -53,6 +53,7 @@ class Odd:
         Return object as a string
         '''
         list = [
+            self.id,
             self.bookmaker,
             self.odd,
             self.timestamp
