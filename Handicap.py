@@ -34,6 +34,7 @@ class Handicap:
         return ",".join([str(i) for i in list])
 
     def to_dict(self):
+        '''Reformat collected odds into one single dictionary'''
         
         # turn odd object into a list
         items = []
@@ -55,13 +56,22 @@ class Handicap:
         return odd_dict
 
     def summary(self):
+        '''Filter and calculate the odds data to find bet opening, bet closing, odds highest, and odds average'''
+
+        # find the opening and closing value
+        temp = {}
         odds = self.to_dict()
         for d,data in odds.items():
+            if d not in temp:
+                temp.setdefault(d,[])
             for b,odd in data.items():
                 odds[d][b] = {
                     'opening': odd[0],
-                    'closing': odd[-1],
-                    'highest': max(odd),
-                    'average': round(sum(odd)/len(odd),2)
+                    'closing': odd[-1]
                 }
+                temp[d].append(odd[-1])
+
+        # calculate the highest and the average odds based on it's column
+        self.highest = {k:max(temp[k]) for k in temp}
+        self.average = {k:round(sum(temp[k])/len(temp[k]),2) for k in temp}
         return odds

@@ -1,6 +1,5 @@
 # import oddsportal object
 from Handicap import Handicap
-from Bookmaker import Bookmaker
 from Odd import Odd
 
 import json
@@ -8,7 +7,7 @@ import os
 
 from pprint import pprint
 
-os.system("clear")
+os.system("cls")
 
 # define functions
 def collect_value(data: list, index: int) -> dict:
@@ -18,7 +17,7 @@ def collect_value(data: list, index: int) -> dict:
     return result
 
 # read json file
-data = json.load(open('data/Over-Under (Full Time).json',encoding='utf-8'))
+data = json.load(open('data/Over-Under (2nd Half).json',encoding='utf-8'))
 
 # define odds variable
 bookmakers = json.load(open('data/bookmakers.json',encoding='utf-8'))
@@ -42,52 +41,62 @@ for h in oddsdata:
     ids = collect_value(data=outcomeId, index=idx) # outcome ids
 
     # collecting opening odds
+    act = oddsdata[h]['act']
     openingOdd = oddsdata[h]['openingOdd']
     openingChangeTime = oddsdata[h]['openingChangeTime']
     for bookies_id in openingOdd:
-        ods = collect_value(data=openingOdd[bookies_id], index=idx) # odds value
-        tms = collect_value(data=openingChangeTime[bookies_id], index=idx) # timestamps
-        for i,_id in enumerate(ids.values()):
-            if _id != -1:
-                odd = Odd(
-                    id=_id,
-                    odd=ods[i],
-                    timestamp=tms[i],
-                    bookmaker=bookmakers[bookies_id]['WebName']
-                )
-                odds.append(odd)
+        if act[bookies_id]:
+            ods = collect_value(data=openingOdd[bookies_id], index=idx) # odds value
+            tms = collect_value(data=openingChangeTime[bookies_id], index=idx) # timestamps
+            for i,_id in enumerate(ids.values()):
+                if _id != -1:
+                    odd = Odd(
+                        id=_id,
+                        odd=ods[i],
+                        timestamp=tms[i],
+                        bookmaker=bookmakers[bookies_id]['WebName']
+                    )
+                    odds.append(odd)
 
     # collecting handicap odds
     handicapOdds = oddsdata[h]['odds']
     handicapChangeTime = oddsdata[h]['changeTime']
     for bookies_id in handicapOdds:
-        ods = collect_value(data=handicapOdds[bookies_id], index=idx) # odds value
-        tms = collect_value(data=handicapChangeTime[bookies_id], index=idx) # timestamps
-        for i,_id in enumerate(ids.values()):
-            if _id != -1:
-                odd = Odd(
-                    id=_id,
-                    odd=ods[i],
-                    timestamp=tms[i],
-                    bookmaker=bookmakers[bookies_id]['WebName']
-                )
-                odds.append(odd)
+        if act[bookies_id]:
+            ods = collect_value(data=handicapOdds[bookies_id], index=idx) # odds value
+            tms = collect_value(data=handicapChangeTime[bookies_id], index=idx) # timestamps
+            for i,_id in enumerate(ids.values()):
+                if _id != -1:
+                    odd = Odd(
+                        id=_id,
+                        odd=ods[i],
+                        timestamp=tms[i],
+                        bookmaker=bookmakers[bookies_id]['WebName']
+                    )
+                    odds.append(odd)
 
     # collecting history data
     for _id in ids.values():
         if _id != -1:
             for bookies_id in history[_id]:
-                for value in history[_id][bookies_id]:
-                    odd = Odd(
-                        id=_id,
-                        odd=value[0],
-                        timestamp=value[-1],
-                        bookmaker=bookmakers[bookies_id]['WebName']
-                    )
-                    odds.append(odd)
+                if act[bookies_id]:
+                    for value in history[_id][bookies_id]:
+                        odd = Odd(
+                            id=_id,
+                            odd=value[0],
+                            timestamp=value[-1],
+                            bookmaker=bookmakers[bookies_id]['WebName']
+                        )
+                        odds.append(odd)
 
-    # create Bookmakers object
+    # calculate the final summary
+    print(odds.value, end=": ")
     results = odds.summary()
-    pprint(results)
 
-    break
+    # filter the results
+    keyword = "bet365"
+    for k in results:
+        for b in results[k]:
+            results[k] = {p:results[k][p] for p in results[k] if p == keyword}
+    
+    print(results)
