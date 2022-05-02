@@ -1,0 +1,20 @@
+[
+    {"name": "1X2 (Full Time)", "bettingType": 1,"scopeId": 2, "labels": ["1","X","2"]},
+    {"name": "1X2 (1st Half)", "bettingType": 1,"scopeId": 3, "labels": ["1","X","2"]},
+    {"name": "1X2 (2nd Half)", "bettingType": 1,"scopeId": 4, "labels": ["1","X","2"]},
+    {"name": "Asian Handicap (Full Time)", "bettingType": 5, "scopeId": 2, "labels": ["1","2"]},
+    {"name": "Asian Handicap (1st Half)", "bettingType": 5, "scopeId": 3, "labels": ["1","2"]},
+    {"name": "Asian Handicap (2nd Half)", "bettingType": 5, "scopeId": 4, "labels": ["1","2"]},
+    {"name": "Both Teams To Score (Full Time)", "bettingType": 13, "scopeId": 2, "labels": ["Yes","No"]},
+    {"name": "Both Teams To Score (1st Half)", "bettingType": 13, "scopeId": 3, "labels": ["Yes","No"]},
+    {"name": "Both Teams To Score (2nd Half)", "bettingType": 13, "scopeId": 4, "labels": ["Yes","No"]},
+    {"name": "Correct Score (Full Time)", "bettingType": 8, "scopeId": 2, "labels": ["Odds"]},
+    {"name": "Correct Score (1st Half)", "bettingType": 8, "scopeId": 3, "labels": ["Odds"]},
+    {"name": "Correct Score (2nd Half)", "bettingType": 8, "scopeId": 4, "labels": ["Odds"]},
+    {"name": "Double Chance (Full Time)", "bettingType": 4, "scopeId": 2, "labels": ["1X","12","X2"]},
+    {"name": "Double Chance (1st Half)", "bettingType": 4, "scopeId": 3, "labels": ["1X","12","X2"]},
+    {"name": "Half Time / Full Time", "bettingType": 9, "scopeId": 2, "labels": ["Odds"]},
+    {"name": "Over/Under (Full Time)", "bettingType": 2, "scopeId": 2, "labels": ["Over","Under"]},
+    {"name": "Over/Under (1st Half)", "bettingType": 2, "scopeId": 3, "labels": ["Over","Under"]},
+    {"name": "Over/Under (2nd Half)", "bettingType": 2, "scopeId": 4, "labels": ["Over","Under"]}
+]
